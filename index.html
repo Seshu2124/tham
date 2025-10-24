@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Tambola - Online Housie Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #ff8a00, #da1b60);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(255, 138, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .game-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2a5298, #1e3c72);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            border: 3px solid #ff8a00;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #ff8a00;
+        }
+
+        .modal input, .modal select {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .modal input::placeholder {
+            color: #ccc;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        .modal-btn.secondary {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+        }
+
+        /* Game Sections */
+        .lobby-section {
+            text-align: center;
+        }
+
+        .game-section {
+            display: none;
+        }
+
+        .main-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .current-number {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #ff8a00;
+            text-shadow: 0 0 30px rgba(255, 138, 0, 0.5);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        .number-announcement {
+            font-size: 1.5rem;
+            color: #00ff88;
+            margin-bottom: 20px;
+            min-height: 40px;
+        }
+
+        .timer-display {
+            margin-bottom: 30px;
+        }
+
+        .timer {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .ticket-area {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .ticket {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .ticket-row {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .ticket-cell {
+            aspect-ratio: 1;
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .ticket-cell.number {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .ticket-cell.empty {
+            background: #e9ecef;
+            border: 2px dashed #adb5bd;
+        }
+
+        .ticket-cell.marked {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .ticket-cell.marked::after {
+            content: '✓';
+            position: absolute;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .win-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .win-btn {
+            padding: 12px;
+            background: linear-gradient(135deg, #666, #888);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: not-allowed;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .win-btn.available {
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            cursor: pointer;
+            opacity: 1;
+        }
+
+        .win-btn.available:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 27, 96, 0.4);
+        }
+
+        .win-btn.claimed {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            flex: 1;
+            justify-content: center;
+            min-width: 140px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(218, 27, 96, 0.4);
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+        }
+
+        .control-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Sidebar Sections */
+        .room-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .room-code-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ff8a00;
+            letter-spacing: 5px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .players-list {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .player-wins {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+
+        .called-numbers {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .called-number {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 8px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .called-number.recent {
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            animation: highlight 2s ease-in-out;
+        }
+
+        .chat-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            max-height: 200px;
+        }
+
+        .chat-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .chat-input button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff8a00;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .win-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: celebrate 2s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes highlight {
+            0% { background: linear-gradient(135deg, #ff8a00, #da1b60); transform: scale(1.1); }
+            100% { background: rgba(255, 255, 255, 0.1); transform: scale(1); }
+        }
+
+        @keyframes celebrate {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        @media (max-width: 1024px) {
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .current-number {
+                font-size: 5rem;
+            }
+            
+            .win-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 Multiplayer Tambola</h1>
+            <p class="subtitle">Play Housie Online with Friends & Family</p>
+        </header>
+
+        <div class="game-container">
+            <div class="game-area">
+                <!-- Lobby Section -->
+                <div class="lobby-section" id="lobbySection">
+                    <div class="controls">
+                        <button class="control-btn" onclick="showCreateModal()">
+                            <i class="fas fa-plus"></i> Create Game
+                        </button>
+                        <button class="control-btn secondary" onclick="showJoinModal()">
+                            <i class="fas fa-sign-in-alt"></i> Join Game
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Game Section -->
+                <div class="game-section" id="gameSection">
+                    <div class="main-display">
+                        <div class="current-number" id="currentNumber">--</div>
+                        <div class="number-announcement" id="numberAnnouncement">Waiting for game to start...</div>
+                        
+                        <div class="timer-display">
+                            <div class="timer" id="timer">10</div>
+                            <div>Next number in</div>
+                        </div>
+                    </div>
+
+                    <div class="ticket-area">
+                        <h3><i class="fas fa-ticket-alt"></i> Your Tambola Ticket</h3>
+                        <div class="ticket" id="ticket">
+                            <!-- Ticket will be generated here -->
+                        </div>
+                        
+                        <div class="win-buttons">
+                            <button class="win-btn" id="earlyFiveBtn" onclick="claimWin('earlyFive')">
+                                <i class="fas fa-star"></i> Early Five
+                            </button>
+                            <button class="win-btn" id="firstLineBtn" onclick="claimWin('firstLine')">
+                                <i class="fas fa-grip-lines"></i> First Line
+                            </button>
+                            <button class="win-btn" id="secondLineBtn" onclick="claimWin('secondLine')">
+                                <i class="fas fa-grip-lines"></i> Second Line
+                            </button>
+                            <button class="win-btn" id="thirdLineBtn" onclick="claimWin('thirdLine')">
+                                <i class="fas fa-grip-lines"></i> Third Line
+                            </button>
+                            <button class="win-btn" id="housieBtn" onclick="claimWin('housie')">
+                                <i class="fas fa-trophy"></i> Full Housie
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="control-btn" onclick="startGame()" id="startBtn">
+                            <i class="fas fa-play"></i> Start Game
+                        </button>
+                        <button class="control-btn secondary" onclick="resetGame()" id="resetBtn">
+                            <i class="fas fa-redo"></i> New Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="room-info" id="roomInfo" style="display: none;">
+                    <h3><i class="fas fa-door-open"></i> Game Room</h3>
+                    <div class="room-code-display" id="roomCodeDisplay">----</div>
+                    <p>Share this code with friends</p>
+                    <div class="game-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="playerCount">1</div>
+                            <div class="stat-label">Players</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="maxPlayers">6</div>
+                            <div class="stat-label">Max Players</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="players-list">
+                    <h3><i class="fas fa-users"></i> Players</h3>
+                    <div id="playersList">
+                        <div class="player-item">
+                            <div class="player-avatar">?</div>
+                            <div>Waiting for players...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="called-numbers">
+                    <h3><i class="fas fa-history"></i> Called Numbers</h3>
+                    <div class="numbers-grid" id="numbersGrid">
+                        <!-- Called numbers will appear here -->
+                    </div>
+                </div>
+
+                <div class="chat-section">
+                    <h3><i class="fas fa-comments"></i> Chat</h3>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message">
+                            <strong>System:</strong> Welcome to Tambola!
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Type your message...">
+                        <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <h2>Create New Game</h2>
+            <input type="text" id="hostName" placeholder="Enter your name" maxlength="15">
+            <select id="maxPlayersSelect">
+                <option value="2">2 Players</option>
+                <option value="4">4 Players</option>
+                <option value="6" selected>6 Players</option>
+                <option value="8">8 Players</option>
+                <option value="10">10 Players</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="modal-btn" onclick="createGame()">Create Game</button>
+                <button class="modal-btn secondary" onclick="hideModal('createModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="joinModal">
+        <div class="modal-content">
+            <h2>Join Game</h2>
+            <input type="text" id="playerName" placeholder="Enter your name" maxlength="15">
+            <input type="text" id="gameCodeInput" placeholder="Enter game code" maxlength="4" style="font-size: 1.5rem; letter-spacing: 5px;">
+            <div class="modal-buttons">
+                <button class="modal-btn" onclick="joinGame()">Join Game</button>
+                <button class="modal-btn secondary" onclick="hideModal('joinModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            isHost: false,
+            gameCode: null,
+            players: {},
+            maxPlayers: 6,
+            isRunning: false,
+            calledNumbers: [],
+            remainingNumbers: Array.from({length: 90}, (_, i) => i + 1),
+            interval: null,
+            timer: 10,
+            gameStartTime: null,
+            myTicket: [],
+            markedNumbers: new Set(),
+            myName: '',
+            wins: {
+                earlyFive: { claimed: false, available: false },
+                firstLine: { claimed: false, available: false },
+                secondLine: { claimed: false, available: false },
+                thirdLine: { claimed: false, available: false },
+                housie: { claimed: false, available: false }
+            }
+        };
+
+        // Storage keys
+        const GAMES_STORAGE_KEY = 'tambola_active_games';
+        const PLAYER_ID_KEY = 'tambola_player_id';
+
+        // Generate or retrieve player ID
+        function getPlayerId() {
+            let playerId = localStorage.getItem(PLAYER_ID_KEY);
+            if (!playerId) {
+                playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem(PLAYER_ID_KEY, playerId);
+            }
+            return playerId;
+        }
+
+        // Get active games from localStorage
+        function getActiveGames() {
+            try {
+                const games = localStorage.getItem(GAMES_STORAGE_KEY);
+                return games ? new Map(JSON.parse(games)) : new Map();
+            } catch (e) {
+                console.error('Error reading games from storage:', e);
+                return new Map();
+            }
+        }
+
+        // Save active games to localStorage
+        function saveActiveGames(games) {
+            try {
+                localStorage.setItem(GAMES_STORAGE_KEY, JSON.stringify(Array.from(games.entries())));
+            } catch (e) {
+                console.error('Error saving games to storage:', e);
+            }
+        }
+
+        // Generate unique game code
+        function generateGameCode() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            
+            // Ensure code is unique
+            const activeGames = getActiveGames();
+            if (activeGames.has(code)) {
+                return generateGameCode(); // Recursively generate until unique
+            }
+            return code;
+        }
+
+        // Simulated WebSocket connection using localStorage events
+        const socket = {
+            send: (data) => {
+                console.log('Sending:', data);
+                // Store message in localStorage to simulate broadcasting
+                const messageId = 'msg_' + Date.now() + '_' + Math.random();
+                localStorage.setItem('tambola_message_' + messageId, JSON.stringify({
+                    ...data,
+                    timestamp: Date.now(),
+                    sender: getPlayerId()
+                }));
+                
+                // Clean up old messages
+                setTimeout(() => {
+                    localStorage.removeItem('tambola_message_' + messageId);
+                }, 5000);
+            }
+        };
+
+        // Listen for messages from other tabs
+        function setupMessageListener() {
+            window.addEventListener('storage', function(e) {
+                if (e.key && e.key.startsWith('tambola_message_') && e.newValue) {
+                    try {
+                        const data = JSON.parse(e.newValue);
+                        if (data.sender !== getPlayerId()) { // Don't process our own messages
+                            handleServerMessage(data);
+                        }
+                    } catch (error) {
+                        console.error('Error processing message:', error);
+                    }
+                }
+                
+                // Also check for game state changes
+                if (e.key === GAMES_STORAGE_KEY && gameState.gameCode) {
+                    checkGameUpdates();
+                }
+            });
+            
+            // Also check periodically for updates
+            setInterval(checkGameUpdates, 1000);
+        }
+
+        function checkGameUpdates() {
+            if (!gameState.gameCode) return;
+            
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            
+            if (game) {
+                // Update called numbers
+                if (game.calledNumbers.length !== gameState.calledNumbers.length) {
+                    gameState.calledNumbers = [...game.calledNumbers];
+                    updateCalledNumbers();
+                }
+                
+                // Update players
+                const currentPlayerIds = Object.keys(gameState.players);
+                const newPlayerIds = Array.from(game.players.keys());
+                
+                if (currentPlayerIds.length !== newPlayerIds.length || 
+                    !currentPlayerIds.every(id => newPlayerIds.includes(id))) {
+                    updatePlayersFromStorage();
+                }
+                
+                // Update game running state
+                if (game.isRunning !== gameState.isRunning) {
+                    gameState.isRunning = game.isRunning;
+                    if (gameState.isRunning && !gameState.interval) {
+                        handleGameStarted();
+                    }
+                }
+            }
+        }
+
+        function updatePlayersFromStorage() {
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            
+            if (game) {
+                gameState.players = {};
+                game.players.forEach((player, id) => {
+                    gameState.players[id] = {
+                        id: id,
+                        name: player.name,
+                        isHost: player.isHost,
+                        wins: player.wins || 0
+                    };
+                });
+                updatePlayersList();
+            }
+        }
+
+        function handleServerMessage(data) {
+            console.log('Received:', data);
+            
+            // Only process messages for our current game
+            if (data.gameCode && data.gameCode !== gameState.gameCode) {
+                return;
+            }
+            
+            switch(data.type) {
+                case 'player_joined':
+                    handlePlayerJoined(data);
+                    break;
+                case 'player_left':
+                    handlePlayerLeft(data);
+                    break;
+                case 'game_started':
+                    handleGameStarted();
+                    break;
+                case 'number_called':
+                    handleNumberCalled(data.number);
+                    break;
+                case 'win_claimed':
+                    handleWinClaimed(data.playerName, data.winType);
+                    break;
+                case 'chat_message':
+                    handleChatMessage(data.playerName, data.message);
+                    break;
+            }
+        }
+
+        function showCreateModal() {
+            document.getElementById('createModal').style.display = 'flex';
+            document.getElementById('hostName').focus();
+        }
+
+        function showJoinModal() {
+            document.getElementById('joinModal').style.display = 'flex';
+            document.getElementById('playerName').focus();
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function createGame() {
+            const playerName = document.getElementById('hostName').value.trim();
+            const maxPlayers = parseInt(document.getElementById('maxPlayersSelect').value);
+            
+            if (!playerName) {
+                alert('Please enter your name');
+                return;
+            }
+
+            // Generate game code
+            const gameCode = generateGameCode();
+            const playerId = getPlayerId();
+            
+            // Create game in active games
+            const activeGames = getActiveGames();
+            activeGames.set(gameCode, {
+                host: playerName,
+                maxPlayers: maxPlayers,
+                players: new Map([[playerId, {
+                    name: playerName,
+                    isHost: true,
+                    wins: 0
+                }]]),
+                isRunning: false,
+                calledNumbers: [],
+                lastUpdated: Date.now()
+            });
+            saveActiveGames(activeGames);
+
+            gameState.myName = playerName;
+            gameState.maxPlayers = maxPlayers;
+            gameState.gameCode = gameCode;
+            gameState.isHost = true;
+            
+            // Add host as first player
+            gameState.players[playerId] = {
+                id: playerId,
+                name: playerName,
+                isHost: true,
+                wins: 0
+            };
+            
+            updateUI();
+            hideModal('createModal');
+            addChatMessage('System', `Game created! Share code: ${gameCode}`);
+        }
+
+        function joinGame() {
+            const playerName = document.getElementById('playerName').value.trim();
+            const gameCode = document.getElementById('gameCodeInput').value.trim().toUpperCase();
+            
+            if (!playerName) {
+                alert('Please enter your name');
+                return;
+            }
+
+            if (!gameCode || gameCode.length !== 4) {
+                alert('Please enter a valid 4-digit game code');
+                return;
+            }
+
+            // Check if game exists
+            const activeGames = getActiveGames();
+            if (!activeGames.has(gameCode)) {
+                alert('Game not found. Please check the code and try again.');
+                return;
+            }
+
+            const game = activeGames.get(gameCode);
+            
+            // Check if game is full
+            if (game.players.size >= game.maxPlayers) {
+                alert('Game is full. Cannot join.');
+                return;
+            }
+
+            // Check if game has started
+            if (game.isRunning) {
+                alert('Game has already started. Cannot join.');
+                return;
+            }
+
+            const playerId = getPlayerId();
+            gameState.myName = playerName;
+            gameState.gameCode = gameCode;
+            gameState.maxPlayers = game.maxPlayers;
+            gameState.isHost = false;
+            
+            // Add player to game
+            game.players.set(playerId, {
+                name: playerName,
+                isHost: false,
+                wins: 0
+            });
+            game.lastUpdated = Date.now();
+            activeGames.set(gameCode, game);
+            saveActiveGames(activeGames);
+
+            // Update local game state
+            gameState.players[playerId] = {
+                id: playerId,
+                name: playerName,
+                isHost: false,
+                wins: 0
+            };
+
+            // Get existing players
+            game.players.forEach((player, id) => {
+                if (id !== playerId) {
+                    gameState.players[id] = {
+                        id: id,
+                        name: player.name,
+                        isHost: player.isHost,
+                        wins: player.wins || 0
+                    };
+                }
+            });
+            
+            updateUI();
+            hideModal('joinModal');
+            addChatMessage('System', `${playerName} joined the game!`);
+            
+            // Notify other players
+            socket.send({
+                type: 'player_joined',
+                playerId: playerId,
+                player: {
+                    id: playerId,
+                    name: playerName,
+                    isHost: false,
+                    wins: 0
+                },
+                gameCode: gameCode
+            });
+        }
+
+        function handlePlayerJoined(data) {
+            gameState.players[data.playerId] = data.player;
+            updatePlayersList();
+            addChatMessage('System', `${data.player.name} joined the game!`);
+        }
+
+        function handlePlayerLeft(data) {
+            delete gameState.players[data.playerId];
+            updatePlayersList();
+            addChatMessage('System', `${data.playerName} left the game!`);
+        }
+
+        function updateUI() {
+            // Show game section
+            document.getElementById('lobbySection').style.display = 'none';
+            document.getElementById('gameSection').style.display = 'block';
+            document.getElementById('roomInfo').style.display = 'block';
+            
+            // Update room info
+            document.getElementById('roomCodeDisplay').textContent = gameState.gameCode;
+            document.getElementById('maxPlayers').textContent = gameState.maxPlayers;
+            
+            // Generate ticket
+            generateTicket();
+            
+            // Update players list
+            updatePlayersList();
+            
+            // Set host controls
+            document.getElementById('startBtn').disabled = !gameState.isHost;
+            document.getElementById('resetBtn').disabled = !gameState.isHost;
+
+            addChatMessage('System', `Welcome to game ${gameState.gameCode}!`);
+        }
+
+        function updatePlayersList() {
+            const playersList = document.getElementById('playersList');
+            playersList.innerHTML = '';
+            
+            const playerCount = Object.keys(gameState.players).length;
+            document.getElementById('playerCount').textContent = playerCount;
+            
+            Object.values(gameState.players).forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.className = 'player-item';
+                
+                const avatarColor = player.isHost ? '#ff8a00' : getRandomColor();
+                
+                playerElement.innerHTML = `
+                    <div class="player-avatar" style="background: ${avatarColor};">${player.name[0]}</div>
+                    <div>${player.name} ${player.isHost ? '(Host)' : ''}</div>
+                    <div class="player-wins">${player.wins} wins</div>
+                `;
+                playersList.appendChild(playerElement);
+            });
+        }
+
+        function getRandomColor() {
+            const colors = ['#00c6ff', '#4CAF50', '#da1b60', '#ffbd2e', '#28ca42', '#9c27b0'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function generateTicket() {
+            const ticket = [];
+            const ranges = [
+                [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
+                [50, 59], [60, 69], [70, 79], [80, 90]
+            ];
+            
+            for (let row = 0; row < 3; row++) {
+                const rowNumbers = [];
+                const positions = new Set();
+                
+                while (positions.size < 5) {
+                    positions.add(Math.floor(Math.random() * 9));
+                }
+                
+                for (let col = 0; col < 9; col++) {
+                    if (positions.has(col)) {
+                        const [min, max] = ranges[col];
+                        const number = Math.floor(Math.random() * (max - min + 1)) + min;
+                        rowNumbers.push(number);
+                    } else {
+                        rowNumbers.push(null);
+                    }
+                }
+                
+                ticket.push(rowNumbers);
+            }
+            
+            gameState.myTicket = ticket;
+            renderTicket();
+        }
+
+        function renderTicket() {
+            const ticketElement = document.getElementById('ticket');
+            ticketElement.innerHTML = '';
+            
+            gameState.myTicket.forEach((row, rowIndex) => {
+                const rowElement = document.createElement('div');
+                rowElement.className = 'ticket-row';
+                
+                row.forEach((number, colIndex) => {
+                    const cell = document.createElement('div');
+                    if (number === null) {
+                        cell.className = 'ticket-cell empty';
+                    } else {
+                        cell.className = `ticket-cell number ${gameState.markedNumbers.has(number) ? 'marked' : ''}`;
+                        cell.textContent = number;
+                        cell.onclick = () => toggleNumber(number, cell);
+                    }
+                    rowElement.appendChild(cell);
+                });
+                
+                ticketElement.appendChild(rowElement);
+            });
+            
+            checkWinConditions();
+        }
+
+        function toggleNumber(number, element) {
+            if (gameState.markedNumbers.has(number)) {
+                gameState.markedNumbers.delete(number);
+                element.classList.remove('marked');
+            } else {
+                gameState.markedNumbers.add(number);
+                element.classList.add('marked');
+            }
+            checkWinConditions();
+        }
+
+        function checkWinConditions() {
+            const marked = Array.from(gameState.markedNumbers);
+            const allNumbers = gameState.myTicket.flat().filter(num => num !== null);
+            
+            // Check Early Five
+            gameState.wins.earlyFive.available = marked.length >= 5;
+            
+            // Check Lines
+            const firstLine = gameState.myTicket[0].filter(num => num !== null);
+            const secondLine = gameState.myTicket[1].filter(num => num !== null);
+            const thirdLine = gameState.myTicket[2].filter(num => num !== null);
+            
+            gameState.wins.firstLine.available = firstLine.every(num => gameState.markedNumbers.has(num));
+            gameState.wins.secondLine.available = secondLine.every(num => gameState.markedNumbers.has(num));
+            gameState.wins.thirdLine.available = thirdLine.every(num => gameState.markedNumbers.has(num));
+            
+            // Check Full Housie
+            gameState.wins.housie.available = allNumbers.every(num => gameState.markedNumbers.has(num));
+            
+            updateWinButtons();
+        }
+
+        function updateWinButtons() {
+            Object.keys(gameState.wins).forEach(winType => {
+                const btn = document.getElementById(winType + 'Btn');
+                const win = gameState.wins[winType];
+                
+                if (win.claimed) {
+                    btn.className = 'win-btn claimed';
+                } else if (win.available) {
+                    btn.className = 'win-btn available';
+                } else {
+                    btn.className = 'win-btn';
+                }
+            });
+        }
+
+        function startGame() {
+            if (!gameState.isHost) return;
+            
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            if (game) {
+                game.isRunning = true;
+                game.lastUpdated = Date.now();
+                activeGames.set(gameState.gameCode, game);
+                saveActiveGames(activeGames);
+            }
+            
+            socket.send({ 
+                type: 'start_game', 
+                gameCode: gameState.gameCode 
+            });
+            
+            handleGameStarted();
+        }
+
+        function handleGameStarted() {
+            gameState.isRunning = true;
+            gameState.gameStartTime = new Date();
+            document.getElementById('startBtn').disabled = true;
+            
+            if (gameState.isHost) {
+                gameState.interval = setInterval(callNextNumber, 10000);
+                callNextNumber();
+            }
+            
+            addToAnnouncement("Game started! Good luck everyone!");
+            addChatMessage('System', 'Game started! Numbers will be called automatically.');
+        }
+
+        function callNextNumber() {
+            if (gameState.remainingNumbers.length === 0) {
+                endGame();
+                return;
+            }
+
+            gameState.timer = 10;
+            
+            const randomIndex = Math.floor(Math.random() * gameState.remainingNumbers.length);
+            const calledNumber = gameState.remainingNumbers.splice(randomIndex, 1)[0];
+            
+            gameState.calledNumbers.push(calledNumber);
+            
+            // Update active game
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            if (game) {
+                game.calledNumbers.push(calledNumber);
+                game.lastUpdated = Date.now();
+                activeGames.set(gameState.gameCode, game);
+                saveActiveGames(activeGames);
+            }
+            
+            socket.send({ 
+                type: 'number_called', 
+                number: calledNumber,
+                gameCode: gameState.gameCode 
+            });
+            
+            handleNumberCalled(calledNumber);
+        }
+
+        function handleNumberCalled(number) {
+            document.getElementById('currentNumber').textContent = number;
+            document.getElementById('numberAnnouncement').textContent = `Number ${number} called!`;
+            
+            // Add to called numbers grid
+            updateCalledNumbers();
+            
+            // Highlight the recent number
+            const numberElements = document.querySelectorAll('.called-number');
+            numberElements.forEach(element => {
+                if (parseInt(element.textContent) === number) {
+                    element.classList.add('recent');
+                    setTimeout(() => element.classList.remove('recent'), 2000);
+                }
+            });
+            
+            // Auto-mark if present in ticket
+            if (gameState.myTicket.flat().includes(number)) {
+                gameState.markedNumbers.add(number);
+                renderTicket();
+            }
+            
+            // Update timer display
+            updateTimer();
+        }
+
+        function updateCalledNumbers() {
+            const numbersGrid = document.getElementById('numbersGrid');
+            numbersGrid.innerHTML = '';
+            
+            for (let i = 1; i <= 90; i++) {
+                const numberElement = document.createElement('div');
+                numberElement.className = 'called-number';
+                numberElement.textContent = i;
+                
+                if (gameState.calledNumbers.includes(i)) {
+                    numberElement.style.background = 'linear-gradient(135deg, #ff8a00, #da1b60)';
+                }
+                
+                numbersGrid.appendChild(numberElement);
+            }
+        }
+
+        function updateTimer() {
+            let timeLeft = gameState.timer;
+            const timerElement = document.getElementById('timer');
+            
+            const countdown = setInterval(() => {
+                timerElement.textContent = timeLeft;
+                timeLeft--;
+                
+                if (timeLeft < 0) {
+                    clearInterval(countdown);
+                }
+            }, 1000);
+        }
+
+        function claimWin(winType) {
+            const win = gameState.wins[winType];
+            
+            if (!win.available || win.claimed) {
+                return;
+            }
+            
+            // Check if this win is still valid (all numbers have been called)
+            let isValid = true;
+            
+            switch(winType) {
+                case 'earlyFive':
+                    if (gameState.markedNumbers.size < 5) isValid = false;
+                    break;
+                case 'firstLine':
+                    const firstLine = gameState.myTicket[0].filter(num => num !== null);
+                    isValid = firstLine.every(num => gameState.calledNumbers.includes(num));
+                    break;
+                case 'secondLine':
+                    const secondLine = gameState.myTicket[1].filter(num => num !== null);
+                    isValid = secondLine.every(num => gameState.calledNumbers.includes(num));
+                    break;
+                case 'thirdLine':
+                    const thirdLine = gameState.myTicket[2].filter(num => num !== null);
+                    isValid = thirdLine.every(num => gameState.calledNumbers.includes(num));
+                    break;
+                case 'housie':
+                    const allNumbers = gameState.myTicket.flat().filter(num => num !== null);
+                    isValid = allNumbers.every(num => gameState.calledNumbers.includes(num));
+                    break;
+            }
+            
+            if (!isValid) {
+                alert('Invalid claim! Not all numbers have been called yet.');
+                return;
+            }
+            
+            // Claim the win
+            win.claimed = true;
+            updateWinButtons();
+            
+            // Show win notification
+            showWinNotification(winType);
+            
+            // Update player wins
+            const playerId = getPlayerId();
+            gameState.players[playerId].wins++;
+            
+            // Update in storage
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            if (game && game.players.has(playerId)) {
+                game.players.get(playerId).wins = gameState.players[playerId].wins;
+                game.lastUpdated = Date.now();
+                activeGames.set(gameState.gameCode, game);
+                saveActiveGames(activeGames);
+            }
+            
+            updatePlayersList();
+            
+            // Notify other players
+            socket.send({
+                type: 'win_claimed',
+                playerName: gameState.myName,
+                winType: winType,
+                gameCode: gameState.gameCode
+            });
+            
+            addChatMessage('System', `${gameState.myName} claimed ${getWinTypeName(winType)}!`);
+        }
+
+        function getWinTypeName(winType) {
+            const names = {
+                'earlyFive': 'Early Five',
+                'firstLine': 'First Line',
+                'secondLine': 'Second Line',
+                'thirdLine': 'Third Line',
+                'housie': 'Full Housie'
+            };
+            return names[winType];
+        }
+
+        function showWinNotification(winType) {
+            const notification = document.createElement('div');
+            notification.className = 'win-notification';
+            notification.innerHTML = `
+                <h2>🎉 Congratulations! 🎉</h2>
+                <p>You won ${getWinTypeName(winType)}!</p>
+                <p>${getWinMessage(winType)}</p>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        function getWinMessage(winType) {
+            const messages = {
+                'earlyFive': 'First 5 numbers marked!',
+                'firstLine': 'Complete first line!',
+                'secondLine': 'Complete second line!',
+                'thirdLine': 'Complete third line!',
+                'housie': 'All numbers marked! Full House!'
+            };
+            return messages[winType];
+        }
+
+        function handleWinClaimed(playerName, winType) {
+            addChatMessage('System', `${playerName} claimed ${getWinTypeName(winType)}!`);
+            
+            // Update wins for that player in game state
+            Object.values(gameState.players).forEach(player => {
+                if (player.name === playerName) {
+                    player.wins++;
+                }
+            });
+            
+            updatePlayersList();
+        }
+
+        function resetGame() {
+            if (!gameState.isHost) return;
+            
+            clearInterval(gameState.interval);
+            gameState.interval = null;
+            
+            // Reset game state
+            gameState.isRunning = false;
+            gameState.calledNumbers = [];
+            gameState.remainingNumbers = Array.from({length: 90}, (_, i) => i + 1);
+            gameState.markedNumbers.clear();
+            gameState.timer = 10;
+            
+            // Reset wins
+            Object.keys(gameState.wins).forEach(winType => {
+                gameState.wins[winType] = { claimed: false, available: false };
+            });
+            
+            // Generate new ticket
+            generateTicket();
+            
+            // Update UI
+            document.getElementById('currentNumber').textContent = '--';
+            document.getElementById('numberAnnouncement').textContent = 'Game reset! Ready to start new game.';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('timer').textContent = '10';
+            
+            updateCalledNumbers();
+            updateWinButtons();
+            
+            // Reset active game
+            const activeGames = getActiveGames();
+            const game = activeGames.get(gameState.gameCode);
+            if (game) {
+                game.isRunning = false;
+                game.calledNumbers = [];
+                game.lastUpdated = Date.now();
+                activeGames.set(gameState.gameCode, game);
+                saveActiveGames(activeGames);
+            }
+            
+            addChatMessage('System', 'Game has been reset. Host can start a new game.');
+        }
+
+        function endGame() {
+            clearInterval(gameState.interval);
+            gameState.interval = null;
+            gameState.isRunning = false;
+            
+            document.getElementById('numberAnnouncement').textContent = 'Game Over! All numbers have been called.';
+            document.getElementById('startBtn').disabled = false;
+            
+            addChatMessage('System', 'Game over! All 90 numbers have been called.');
+            
+            // Show final results
+            setTimeout(() => {
+                showFinalResults();
+            }, 2000);
+        }
+
+        function showFinalResults() {
+            const winners = Object.values(gameState.players).sort((a, b) => b.wins - a.wins);
+            let resultsMessage = '🏆 Final Results 🏆\n';
+            
+            winners.forEach((player, index) => {
+                resultsMessage += `${index + 1}. ${player.name}: ${player.wins} wins\n`;
+            });
+            
+            addChatMessage('System', resultsMessage);
+        }
+
+        function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+            
+            addChatMessage(gameState.myName, message);
+            chatInput.value = '';
+            
+            // Simulate sending to other players
+            socket.send({
+                type: 'chat_message',
+                playerName: gameState.myName,
+                message: message,
+                gameCode: gameState.gameCode
+            });
+        }
+
+        function handleChatMessage(playerName, message) {
+            addChatMessage(playerName, message);
+        }
+
+        function addChatMessage(sender, message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'chat-message';
+            messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addToAnnouncement(message) {
+            const announcement = document.getElementById('numberAnnouncement');
+            announcement.textContent = message;
+        }
+
+        // Handle Enter key in chat and modals
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup message listener
+            setupMessageListener();
+            
+            // Chat input
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Modal inputs
+            document.getElementById('hostName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    createGame();
+                }
+            });
+            
+            document.getElementById('playerName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    joinGame();
+                }
+            });
+            
+            document.getElementById('gameCodeInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    joinGame();
+                }
+            });
+            
+            // Initialize called numbers grid
+            updateCalledNumbers();
+        });
+    </script>
+</body>
+</html>
