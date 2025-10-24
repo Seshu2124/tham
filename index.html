@@ -504,13 +504,26 @@
             100% { transform: translate(-50%, -50%) scale(1); }
         }
 
+        /* Mobile Responsive */
         @media (max-width: 1024px) {
             .game-container {
                 grid-template-columns: 1fr;
             }
+            
+            .sidebar {
+                order: -1;
+            }
         }
 
         @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
             .current-number {
                 font-size: 5rem;
             }
@@ -521,6 +534,48 @@
             
             .controls {
                 flex-direction: column;
+            }
+            
+            .modal-content {
+                padding: 20px;
+            }
+            
+            .room-code-display {
+                font-size: 2rem;
+            }
+            
+            .numbers-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+            
+            .ticket-cell {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .current-number {
+                font-size: 4rem;
+            }
+            
+            .timer {
+                font-size: 2rem;
+            }
+            
+            .ticket {
+                padding: 10px;
+            }
+            
+            .ticket-cell {
+                font-size: 0.9rem;
+            }
+            
+            .win-buttons {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -708,7 +763,7 @@
         function getPlayerId() {
             let playerId = localStorage.getItem(PLAYER_ID_KEY);
             if (!playerId) {
-                playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+                playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem(PLAYER_ID_KEY, playerId);
             }
             return playerId;
@@ -718,17 +773,17 @@
         function getActiveGames() {
             try {
                 const games = localStorage.getItem(GAMES_STORAGE_KEY);
-                return games ? new Map(JSON.parse(games)) : new Map();
+                return games ? JSON.parse(games) : {};
             } catch (e) {
                 console.error('Error reading games from storage:', e);
-                return new Map();
+                return {};
             }
         }
 
         // Save active games to localStorage
         function saveActiveGames(games) {
             try {
-                localStorage.setItem(GAMES_STORAGE_KEY, JSON.stringify(Array.from(games.entries())));
+                localStorage.setItem(GAMES_STORAGE_KEY, JSON.stringify(games));
             } catch (e) {
                 console.error('Error saving games to storage:', e);
             }
@@ -744,132 +799,105 @@
             
             // Ensure code is unique
             const activeGames = getActiveGames();
-            if (activeGames.has(code)) {
+            if (activeGames[code]) {
                 return generateGameCode(); // Recursively generate until unique
             }
             return code;
         }
 
-        // Simulated WebSocket connection using localStorage events
-        const socket = {
-            send: (data) => {
-                console.log('Sending:', data);
-                // Store message in localStorage to simulate broadcasting
-                const messageId = 'msg_' + Date.now() + '_' + Math.random();
-                localStorage.setItem('tambola_message_' + messageId, JSON.stringify({
-                    ...data,
-                    timestamp: Date.now(),
-                    sender: getPlayerId()
-                }));
-                
-                // Clean up old messages
-                setTimeout(() => {
-                    localStorage.removeItem('tambola_message_' + messageId);
-                }, 5000);
-            }
-        };
-
-        // Listen for messages from other tabs
-        function setupMessageListener() {
+        // Setup localStorage listener for cross-device communication
+        function setupStorageListener() {
             window.addEventListener('storage', function(e) {
-                if (e.key && e.key.startsWith('tambola_message_') && e.newValue) {
+                if (e.key === GAMES_STORAGE_KEY && e.newValue) {
                     try {
-                        const data = JSON.parse(e.newValue);
-                        if (data.sender !== getPlayerId()) { // Don't process our own messages
-                            handleServerMessage(data);
+                        const games = JSON.parse(e.newValue);
+                        if (gameState.gameCode && games[gameState.gameCode]) {
+                            const game = games[gameState.gameCode];
+                            
+                            // Update called numbers
+                            if (game.calledNumbers && game.calledNumbers.length !== gameState.calledNumbers.length) {
+                                gameState.calledNumbers = [...game.calledNumbers];
+                                updateCalledNumbers();
+                                
+                                // Auto-mark numbers on ticket
+                                gameState.calledNumbers.forEach(number => {
+                                    if (gameState.myTicket.flat().includes(number)) {
+                                        gameState.markedNumbers.add(number);
+                                    }
+                                });
+                                renderTicket();
+                            }
+                            
+                            // Update players
+                            if (game.players) {
+                                const currentPlayerIds = Object.keys(gameState.players);
+                                const newPlayerIds = Object.keys(game.players);
+                                
+                                if (currentPlayerIds.length !== newPlayerIds.length || 
+                                    !currentPlayerIds.every(id => newPlayerIds.includes(id))) {
+                                    gameState.players = {...game.players};
+                                    updatePlayersList();
+                                }
+                            }
+                            
+                            // Update game running state
+                            if (game.isRunning !== gameState.isRunning) {
+                                gameState.isRunning = game.isRunning;
+                                if (gameState.isRunning && !gameState.interval && gameState.isHost) {
+                                    handleGameStarted();
+                                }
+                            }
                         }
                     } catch (error) {
-                        console.error('Error processing message:', error);
+                        console.error('Error processing storage update:', error);
                     }
-                }
-                
-                // Also check for game state changes
-                if (e.key === GAMES_STORAGE_KEY && gameState.gameCode) {
-                    checkGameUpdates();
                 }
             });
             
             // Also check periodically for updates
-            setInterval(checkGameUpdates, 1000);
+            setInterval(checkGameUpdates, 2000);
         }
 
         function checkGameUpdates() {
             if (!gameState.gameCode) return;
             
             const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
+            const game = activeGames[gameState.gameCode];
             
             if (game) {
                 // Update called numbers
-                if (game.calledNumbers.length !== gameState.calledNumbers.length) {
+                if (game.calledNumbers && game.calledNumbers.length !== gameState.calledNumbers.length) {
                     gameState.calledNumbers = [...game.calledNumbers];
                     updateCalledNumbers();
+                    
+                    // Auto-mark numbers on ticket
+                    gameState.calledNumbers.forEach(number => {
+                        if (gameState.myTicket.flat().includes(number)) {
+                            gameState.markedNumbers.add(number);
+                        }
+                    });
+                    renderTicket();
                 }
                 
                 // Update players
-                const currentPlayerIds = Object.keys(gameState.players);
-                const newPlayerIds = Array.from(game.players.keys());
-                
-                if (currentPlayerIds.length !== newPlayerIds.length || 
-                    !currentPlayerIds.every(id => newPlayerIds.includes(id))) {
-                    updatePlayersFromStorage();
+                if (game.players) {
+                    const currentPlayerIds = Object.keys(gameState.players);
+                    const newPlayerIds = Object.keys(game.players);
+                    
+                    if (currentPlayerIds.length !== newPlayerIds.length || 
+                        !currentPlayerIds.every(id => newPlayerIds.includes(id))) {
+                        gameState.players = {...game.players};
+                        updatePlayersList();
+                    }
                 }
                 
                 // Update game running state
                 if (game.isRunning !== gameState.isRunning) {
                     gameState.isRunning = game.isRunning;
-                    if (gameState.isRunning && !gameState.interval) {
+                    if (gameState.isRunning && !gameState.interval && gameState.isHost) {
                         handleGameStarted();
                     }
                 }
-            }
-        }
-
-        function updatePlayersFromStorage() {
-            const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
-            
-            if (game) {
-                gameState.players = {};
-                game.players.forEach((player, id) => {
-                    gameState.players[id] = {
-                        id: id,
-                        name: player.name,
-                        isHost: player.isHost,
-                        wins: player.wins || 0
-                    };
-                });
-                updatePlayersList();
-            }
-        }
-
-        function handleServerMessage(data) {
-            console.log('Received:', data);
-            
-            // Only process messages for our current game
-            if (data.gameCode && data.gameCode !== gameState.gameCode) {
-                return;
-            }
-            
-            switch(data.type) {
-                case 'player_joined':
-                    handlePlayerJoined(data);
-                    break;
-                case 'player_left':
-                    handlePlayerLeft(data);
-                    break;
-                case 'game_started':
-                    handleGameStarted();
-                    break;
-                case 'number_called':
-                    handleNumberCalled(data.number);
-                    break;
-                case 'win_claimed':
-                    handleWinClaimed(data.playerName, data.winType);
-                    break;
-                case 'chat_message':
-                    handleChatMessage(data.playerName, data.message);
-                    break;
             }
         }
 
@@ -902,18 +930,20 @@
             
             // Create game in active games
             const activeGames = getActiveGames();
-            activeGames.set(gameCode, {
+            activeGames[gameCode] = {
                 host: playerName,
                 maxPlayers: maxPlayers,
-                players: new Map([[playerId, {
-                    name: playerName,
-                    isHost: true,
-                    wins: 0
-                }]]),
+                players: {
+                    [playerId]: {
+                        name: playerName,
+                        isHost: true,
+                        wins: 0
+                    }
+                },
                 isRunning: false,
                 calledNumbers: [],
                 lastUpdated: Date.now()
-            });
+            };
             saveActiveGames(activeGames);
 
             gameState.myName = playerName;
@@ -950,15 +980,15 @@
 
             // Check if game exists
             const activeGames = getActiveGames();
-            if (!activeGames.has(gameCode)) {
+            if (!activeGames[gameCode]) {
                 alert('Game not found. Please check the code and try again.');
                 return;
             }
 
-            const game = activeGames.get(gameCode);
+            const game = activeGames[gameCode];
             
             // Check if game is full
-            if (game.players.size >= game.maxPlayers) {
+            if (Object.keys(game.players).length >= game.maxPlayers) {
                 alert('Game is full. Cannot join.');
                 return;
             }
@@ -976,13 +1006,13 @@
             gameState.isHost = false;
             
             // Add player to game
-            game.players.set(playerId, {
+            game.players[playerId] = {
                 name: playerName,
                 isHost: false,
                 wins: 0
-            });
+            };
             game.lastUpdated = Date.now();
-            activeGames.set(gameCode, game);
+            activeGames[gameCode] = game;
             saveActiveGames(activeGames);
 
             // Update local game state
@@ -994,13 +1024,13 @@
             };
 
             // Get existing players
-            game.players.forEach((player, id) => {
+            Object.keys(game.players).forEach(id => {
                 if (id !== playerId) {
                     gameState.players[id] = {
                         id: id,
-                        name: player.name,
-                        isHost: player.isHost,
-                        wins: player.wins || 0
+                        name: game.players[id].name,
+                        isHost: game.players[id].isHost,
+                        wins: game.players[id].wins || 0
                     };
                 }
             });
@@ -1008,31 +1038,6 @@
             updateUI();
             hideModal('joinModal');
             addChatMessage('System', `${playerName} joined the game!`);
-            
-            // Notify other players
-            socket.send({
-                type: 'player_joined',
-                playerId: playerId,
-                player: {
-                    id: playerId,
-                    name: playerName,
-                    isHost: false,
-                    wins: 0
-                },
-                gameCode: gameCode
-            });
-        }
-
-        function handlePlayerJoined(data) {
-            gameState.players[data.playerId] = data.player;
-            updatePlayersList();
-            addChatMessage('System', `${data.player.name} joined the game!`);
-        }
-
-        function handlePlayerLeft(data) {
-            delete gameState.players[data.playerId];
-            updatePlayersList();
-            addChatMessage('System', `${data.playerName} left the game!`);
         }
 
         function updateUI() {
@@ -1195,18 +1200,13 @@
             if (!gameState.isHost) return;
             
             const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
+            const game = activeGames[gameState.gameCode];
             if (game) {
                 game.isRunning = true;
                 game.lastUpdated = Date.now();
-                activeGames.set(gameState.gameCode, game);
+                activeGames[gameState.gameCode] = game;
                 saveActiveGames(activeGames);
             }
-            
-            socket.send({ 
-                type: 'start_game', 
-                gameCode: gameState.gameCode 
-            });
             
             handleGameStarted();
         }
@@ -1240,19 +1240,13 @@
             
             // Update active game
             const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
+            const game = activeGames[gameState.gameCode];
             if (game) {
                 game.calledNumbers.push(calledNumber);
                 game.lastUpdated = Date.now();
-                activeGames.set(gameState.gameCode, game);
+                activeGames[gameState.gameCode] = game;
                 saveActiveGames(activeGames);
             }
-            
-            socket.send({ 
-                type: 'number_called', 
-                number: calledNumber,
-                gameCode: gameState.gameCode 
-            });
             
             handleNumberCalled(calledNumber);
         }
@@ -1364,23 +1358,15 @@
             
             // Update in storage
             const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
-            if (game && game.players.has(playerId)) {
-                game.players.get(playerId).wins = gameState.players[playerId].wins;
+            const game = activeGames[gameState.gameCode];
+            if (game && game.players[playerId]) {
+                game.players[playerId].wins = gameState.players[playerId].wins;
                 game.lastUpdated = Date.now();
-                activeGames.set(gameState.gameCode, game);
+                activeGames[gameState.gameCode] = game;
                 saveActiveGames(activeGames);
             }
             
             updatePlayersList();
-            
-            // Notify other players
-            socket.send({
-                type: 'win_claimed',
-                playerName: gameState.myName,
-                winType: winType,
-                gameCode: gameState.gameCode
-            });
             
             addChatMessage('System', `${gameState.myName} claimed ${getWinTypeName(winType)}!`);
         }
@@ -1423,19 +1409,6 @@
             return messages[winType];
         }
 
-        function handleWinClaimed(playerName, winType) {
-            addChatMessage('System', `${playerName} claimed ${getWinTypeName(winType)}!`);
-            
-            // Update wins for that player in game state
-            Object.values(gameState.players).forEach(player => {
-                if (player.name === playerName) {
-                    player.wins++;
-                }
-            });
-            
-            updatePlayersList();
-        }
-
         function resetGame() {
             if (!gameState.isHost) return;
             
@@ -1468,12 +1441,12 @@
             
             // Reset active game
             const activeGames = getActiveGames();
-            const game = activeGames.get(gameState.gameCode);
+            const game = activeGames[gameState.gameCode];
             if (game) {
                 game.isRunning = false;
                 game.calledNumbers = [];
                 game.lastUpdated = Date.now();
-                activeGames.set(gameState.gameCode, game);
+                activeGames[gameState.gameCode] = game;
                 saveActiveGames(activeGames);
             }
             
@@ -1515,18 +1488,6 @@
             
             addChatMessage(gameState.myName, message);
             chatInput.value = '';
-            
-            // Simulate sending to other players
-            socket.send({
-                type: 'chat_message',
-                playerName: gameState.myName,
-                message: message,
-                gameCode: gameState.gameCode
-            });
-        }
-
-        function handleChatMessage(playerName, message) {
-            addChatMessage(playerName, message);
         }
 
         function addChatMessage(sender, message) {
@@ -1546,8 +1507,8 @@
 
         // Handle Enter key in chat and modals
         document.addEventListener('DOMContentLoaded', function() {
-            // Setup message listener
-            setupMessageListener();
+            // Setup storage listener
+            setupStorageListener();
             
             // Chat input
             document.getElementById('chatInput').addEventListener('keypress', function(e) {
